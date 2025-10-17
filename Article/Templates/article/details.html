@@ -1,0 +1,50 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ article.title }}--我的博客</title>
+</head>
+<body>
+<!-- 显示文章详情 -->
+<h1>{{ article.title }}</h1>
+<p><strong>作者:</strong> {{ article.author.username }} | <strong>发布时间:</strong> {{ article.created }} | <strong>最后更新:</strong>
+    {{ article.updated }}</p>
+<div class="article-content">
+    <!-- 使用 linebreaks 过滤器保留正文中的换行符 -->
+    <p>{{ article.body|linebreaks }}</p>
+</div>
+<a href="{% url 'Article:article_list' %}">« 返回文章列表</a>
+<script src="{% static 'tokenAdd.js' %}"></script>
+<script>
+    async function logoutUser() {
+    const token = localStorage.getItem('authToken');
+
+    try {
+        const response = await fetch('/api/auth/logout/', { // 对应你配置的注销URL
+            method: 'POST',
+            headers: {
+                'Authorization': 'Token ' + token,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            // 1. 清除本地存储的Token
+            localStorage.removeItem('authToken');
+            // 2. (可选) 清除其他用户相关状态
+            // 3. 跳转到登录页或首页
+            window.location.href = '/login/'; // 或首页
+        } else {
+            console.error('注销失败');
+        }
+    } catch (error) {
+        console.error('注销过程中发生错误:', error);
+    }
+}
+
+// 将这个函数绑定到页面上的“退出登录”按钮的点击事件上
+document.getElementById('logout-button').addEventListener('click', logoutUser);
+</script>
+</body>
+</html>

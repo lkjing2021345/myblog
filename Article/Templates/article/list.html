@@ -1,0 +1,31 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>文章列表 - 我的博客</title>
+</head>
+<body>
+<h1>所有文章</h1>
+<hr>
+<!-- 使用 for 循环遍历文章列表 -->
+{% for article in articles %}
+<div class="article-summary">
+    <h2>
+        <!-- 为文章标题添加链接，点击后跳转到详情页 -->
+        <a href="{% url 'Article:article_detail' article.id %}">{{ article.title }}</a>
+    </h2>
+    <p><strong>作者:</strong> {{ article.author.username }} | <strong>发布时间:</strong> {{ article.created|date:"Y-m-d"
+        }}</p>
+    <!-- 使用 slice 过滤器只显示正文的前100个字符作为摘要 -->
+    <p>{{ article.body|slice:":100" }}...</p>
+</div>
+<hr>
+{% empty %}
+<!-- 如果文章列表为空，则显示提示 -->
+<p>暂时还没有发布的文章。</p>
+{% endfor %}
+<script src="{% static 'tokenAdd.js' %}"></script>
+<script src="{% static 'auth.js' %}"></script>
+</body>
+</html>
