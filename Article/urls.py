@@ -22,4 +22,7 @@ urlpatterns = [
     path('login/', views.login_page, name='login_page'),
     path('logout/', views.logout_page, name='logout_page'),
     path('api/get_csrf_token/', views.get_csrf, name='get_csrf'),
+    path('dashboard/', views.dashboard_view, name='dashboard'),
+    path('api/dashboard/', views.dashboard_data, name='dashboard_data'),
+    path('explorer/', views.article_explorer, name='article_explorer'),
 ]

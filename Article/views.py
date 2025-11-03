@@ -1,12 +1,16 @@
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.template.context_processors import csrf
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.db.models import Count
+from django.utils import timezone
+from datetime import timedelta
 
-from .models import Article
+from .models import Article, Category
 from rest_framework import viewsets
 from .serializers import ArticleSerializer
 from rest_framework import status
@@ -32,7 +36,34 @@ def user_register(request):
 
 @login_required
 def articles_api(request):
-    articles = Article.objects.all().order_by('-created')
+    """
+    处理文章列表展示和搜索功能
+    """
+    # 从请求中获取搜索关键词和排序参数
+    search_query = request.GET.get('q', '').strip()  # 'q' 是搜索框的名称
+    order = request.GET.get('order', '-created')  # 默认按创建时间倒序（最新）
+
+    # 基础查询集：所有已发布的文章，并使用select_related优化外键查询[3](@ref)
+    # 假设你的Article模型有一个`is_published`字段，若没有可先去掉这个filter
+    articles = Article.objects.select_related('category')  # 预加载分类信息，避免N+1问题
+
+    # 搜索逻辑：如果用户输入了搜索词
+    if search_query:
+        # 使用Q对象进行联合搜索，在标题和正文中查找[3,4](@ref)
+        articles = articles.filter(
+            Q(title__icontains=search_query) |  # 标题中包含，不区分大小写
+            Q(body__icontains=search_query)  # 正文中包含，不区分大小写
+        )
+
+    # 排序逻辑
+    articles = articles.order_by(order)
+
+    # 准备传递给模板的上下文
+    context = {
+        'articles': articles,
+        'search_query': search_query,  # 将搜索词传回模板，方便显示和保留在输入框
+        'order': order,
+    }
     return render(request, 'article/list.html', {'articles': articles})
 
 
@@ -138,3 +169,85 @@ def get_csrf(request):
 
     # 将令牌返回给前端（这里示例代码有误，应只返回令牌本身）
     return HttpResponse(csrf_token)  # 应直接返回令牌，而非拼接无关内容
+
+
+@authentication_classes([SessionAuthentication, TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def dashboard_data(request, avg_daily=None):
+    # """提供仪表盘所需的JSON数据"""
+    # if not request.user.is_authenticated:
+    #     return JsonResponse({'error': '认证失败'}, status=401)
+
+    # 基础统计
+    total_articles = Article.objects.count()
+    total_categories = Category.objects.count()
+
+    # 近期发布趋势（过去30天）
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    recent_articles = Article.objects.filter(created__gte=thirty_days_ago)
+
+    # 按日期统计发布数量
+    date_counts = recent_articles.extra(
+        {'date': "date(created)"}
+    ).values('date').annotate(count=Count('id')).order_by('date')
+
+    # 分类文章数量统计
+    category_stats = Category.objects.annotate(article_count=Count('article'))
+    category_data = []
+
+    for cat in category_stats:
+        # 检查分类名称是否存在，如果为空则使用备用名称
+        category_name = cat.name
+        if not category_name or category_name.strip() == "":
+            category_name = f"分类-{cat.id}"  # 使用分类ID作为备用名称
+
+        category_data.append({
+            'name': category_name,  # 使用处理后的名称
+            'count': cat.article_count
+        })
+
+    data = {
+        'overview': {
+            'total_articles': total_articles,
+            'total_categories': total_categories,
+            'avg_daily_posts': avg_daily
+        },
+        'trend_data': list(date_counts),
+        'category_data': category_data
+    }
+
+    return JsonResponse(data)
+
+
+def dashboard_view(request):
+    """渲染仪表盘页面"""
+    return render(request, 'article/dashboard.html')
+
+
+def article_explorer(request):
+    """交互式文章探索页面"""
+    # 获取所有分类用于过滤器
+    categories = Category.objects.all()
+
+    # 获取搜索参数
+    search_query = request.GET.get('q', '')
+    category_filter = request.GET.get('category', '')
+
+    articles = Article.objects.select_related('category')
+
+    if search_query:
+        articles = articles.filter(
+            Q(title__icontains=search_query) |
+            Q(body__icontains=search_query)
+        )
+
+    if category_filter:
+        articles = articles.filter(category_id=category_filter)
+
+    context = {
+        'articles': articles,
+        'categories': categories,
+        'search_query': search_query,
+        'selected_category': category_filter
+    }
+    return render(request, 'article/explorer.html', context)

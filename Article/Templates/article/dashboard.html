@@ -1,0 +1,182 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>博客数据仪表盘</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            color: white;
+            transition: transform 0.3s;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .dashboard-header {
+            background: #f8f9fa;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            border-radius: 0 0 20px 20px;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'article_list' %}">
+                <i class="bi bi-graph-up"></i> 博客仪表盘
+            </a>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- 关键指标卡片 -->
+            <div class="col-md-3">
+                <div class="stat-card p-4 mb-4 text-center">
+                    <i class="bi bi-file-text display-4"></i>
+                    <h3 id="totalArticles">0</h3>
+                    <p>总文章数</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card p-4 mb-4 text-center" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <i class="bi bi-tags display-4"></i>
+                    <h3 id="totalCategories">0</h3>
+                    <p>分类数量</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card p-4 mb-4 text-center" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <i class="bi bi-calendar-event display-4"></i>
+                    <h3 id="avgDaily">0</h3>
+                    <p>日均发布</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card p-4 mb-4 text-center" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                    <i class="bi bi-activity display-4"></i>
+                    <h3 id="activeRate">0%</h3>
+                    <p>活跃度</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图表区 -->
+        <div class="row">
+            <div class="col-md-8">
+                <div class="chart-container">
+                    <h5><i class="bi bi-bar-chart-line"></i> 文章发布趋势</h5>
+                    <canvas id="trendChart" height="250"></canvas>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="chart-container">
+                    <h5><i class="bi bi-pie-chart"></i> 分类分布</h5>
+                    <canvas id="categoryChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 使用Fetch API获取数据
+                // 获取认证令牌函数
+        function getAuthToken() {
+            return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+        }
+
+        // 更新仪表盘数据的函数
+        function updateDashboard(data) {
+            // 更新指标卡片
+            document.getElementById('totalArticles').textContent = data.overview.total_articles;
+            document.getElementById('totalCategories').textContent = data.overview.total_categories;
+            document.getElementById('avgDaily').textContent = data.overview.avg_daily_posts;
+
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+                new Chart(trendCtx, {
+                    type: 'line',
+                    data: {
+                        labels: data.trend_data.map(item => item.date),
+                        datasets: [{
+                            label: '每日发布量',
+                            data: data.trend_data.map(item => item.count),
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            tension: 0.4
+                        }]
+                    }
+                });
+
+                // 绘制分类饼图
+                const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+                new Chart(categoryCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.category_data.map(item => item.name),
+                        datasets: [{
+                            data: data.category_data.map(item => item.count),
+                            backgroundColor: [
+                                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                                '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
+                            ]
+                        }]
+                    }
+                });
+            });
+        }
+
+        // 错误处理函数
+        function showError(message) {
+            const errorEl = document.getElementById('error-message');
+            if (errorEl) {
+                errorEl.textContent = message;
+                errorEl.style.display = 'block';
+            }
+        }
+
+        // 主请求逻辑
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/Article/api/dashboard/', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Token ' + getAuthToken()
+                }
+            })
+            .then(response => {
+                if (response.status === 401) {
+                    window.location.href = '/accounts/login/';
+                    return Promise.reject('需要登录');
+                }
+                if (!response.ok) {
+                    throw new Error('网络响应异常: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                updateDashboard(data);
+            })
+            .catch(error => {
+                console.error('获取仪表盘数据失败:', error);
+                showError('加载失败: ' + error.message);
+            });
+        });
+    </script>
+</body>
+</html>

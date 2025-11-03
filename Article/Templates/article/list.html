@@ -15,8 +15,7 @@
         <!-- 为文章标题添加链接，点击后跳转到详情页 -->
         <a href="{% url 'Article:article_detail' article.id %}">{{ article.title }}</a>
     </h2>
-    <p><strong>作者:</strong> {{ article.author.username }} | <strong>发布时间:</strong> {{ article.created|date:"Y-m-d"
-        }}</p>
+    <p><strong>作者:</strong> {{ article.author }} | <strong>发布时间:</strong> {{ article.created|date:"Y年n月j日 G:i" }} | <strong>更新时间:</strong> {{ article.updated|date:"Y年n月j日 G:i" }}</p>
     <!-- 使用 slice 过滤器只显示正文的前100个字符作为摘要 -->
     <p>{{ article.body|slice:":100" }}...</p>
 </div>
