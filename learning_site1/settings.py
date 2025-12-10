@@ -193,3 +193,13 @@ CSRF_COOKIE_HTTPONLY = False  # 允许JS访问Cookie
 # CSRF_COOKIE_DOMAIN = None  # 开发环境设为None
 # CSRF_COOKIE_SECURE = False  # 开发环境设为False
 CSRF_COOKIE_PATH = '/'  # 应该设置为根路径
+
+# settings.py
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.163.com'  # 以163邮箱为例，使用QQ邮箱则改为 'smtp.qq.com'
+EMAIL_PORT = 25  # 或 465（使用SSL）
+EMAIL_HOST_USER = 'your_email@163.com'  # 你的发件邮箱
+EMAIL_HOST_PASSWORD = '你的授权码'  # 注意是邮箱服务的授权码，非登录密码
+EMAIL_USE_TLS = True  # 是否使用TLS安全协议
+# EMAIL_USE_SSL = True  # 如果端口是465，通常使用SSL
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER  # 默认发件人

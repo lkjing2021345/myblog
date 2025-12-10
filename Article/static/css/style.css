@@ -6,7 +6,73 @@
     font-weight: bold;
 }
 
-/* 可以为成功和失败信息定义不同的样式 */
+/* 容器布局 - 使用Flexbox实现居中，并为图片留出空间 */
+.login-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  font-family: 'Segoe UI', sans-serif;
+  padding: 20px;
+}
+
+/* 登录卡片 - 使用Grid布局，左侧放图片，右侧放表单 */
+.login-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* 两等分列 */
+  max-width: 900px;
+  width: 100%;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  overflow: hidden; /* 防止子元素圆角溢出 */
+}
+
+/* 图片展示区域 */
+.login-image {
+  background-image: url("../catgirl.png"); /* 重点修改这一行 */
+  background-size: cover; /* 确保图片覆盖整个区域 */
+  background-position: center; /* 图片居中显示 */
+  background-repeat: no-repeat; /* 防止图片重复 */
+
+  /* 以下是之前定义的布局样式，保持不变 */
+  background: #eef2f7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+/* 图片本身的样式，适应容器 */
+.login-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* 确保图片覆盖整个区域且不变形 */
+}
+
+/* 表单区域样式 */
+.login-form {
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* 优化后的提示信息样式 */
+.message {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  line-height: 1.4;
+  /* 添加平滑出现动画 */
+  animation: fadeInUp 0.5s ease-out;
+}
+
 .success {
   background-color: #f0f9f4;
   color: #0d6832;
