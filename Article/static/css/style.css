@@ -15,7 +15,54 @@
 }
 
 .error {
-    background-color: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
+  background-color: #fdf0f0;
+  color: #c73535;
+  border: 1px solid #f5bebe;
+  /* 更柔和的红色系 */
+}
+
+/* 为提示信息前添加图标 */
+.message::before {
+  content: "";
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+.success::before {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%230d6832"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>');
+}
+
+.error::before {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23c73535"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>');
+}
+
+/* 淡入动画 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 响应式设计：小屏幕下变为单列，图片在上方 */
+@media (max-width: 768px) {
+  .login-card {
+    grid-template-columns: 1fr;
+    /* 单列布局 */
+  }
+
+  .login-image {
+    min-height: 200px;
+    /* 移动端图片区域不宜过高 */
+    order: -1;
+    /* 将图片显示在表单前面 */
+  }
 }
