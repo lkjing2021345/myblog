@@ -3,48 +3,123 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ article.title }}--我的博客</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-<!-- 显示文章详情 -->
-<h1>{{ article.title }}</h1>
-<p><strong>作者:</strong> {{ article.author.username }} | <strong>发布时间:</strong> {{ article.created }} | <strong>最后更新:</strong>
-    {{ article.updated }}</p>
-<div class="article-content">
-    <!-- 使用 linebreaks 过滤器保留正文中的换行符 -->
-    <p>{{ article.body|linebreaks }}</p>
+<div class="container py-4">
+    <a class="btn btn-link px-0" href="{% url 'Article:article_list' %}">« 返回文章列表</a>
+    <h1 class="mb-2">{{ article.title }}</h1>
+    <p class="text-muted">
+        作者: {{ article.author.username|default:"匿名" }} ·
+        分类: {{ article.category.name }} ·
+        发布时间: {{ article.created|date:"Y年n月j日 G:i" }} ·
+        最后更新: {{ article.updated|date:"Y年n月j日 G:i" }}
+    </p>
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        {% for tag in article.tags.all %}
+        <span class="badge bg-light text-dark">#{{ tag.name }}</span>
+        {% empty %}
+        <span class="text-muted small">暂无标签</span>
+        {% endfor %}
+    </div>
+    <div class="article-content mb-5">
+        <p>{{ article.body|linebreaks }}</p>
+    </div>
+
+    <section class="mb-5">
+        <h4 class="mb-3">发表评论</h4>
+        {% if user.is_authenticated %}
+        <form method="post" action="{% url 'Article:comment_create' article.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="parent_id" id="parent_id">
+            <div class="mb-3">
+                <textarea class="form-control" name="content" rows="3" placeholder="写下你的评论..." required></textarea>
+            </div>
+            <button class="btn btn-primary">提交评论</button>
+            <button type="button" class="btn btn-outline-secondary" id="cancel-reply" style="display:none;">取消回复</button>
+            <p class="text-muted small mt-2 mb-0">评论将显示在文章下方。</p>
+        </form>
+        {% else %}
+        <p class="text-muted">请先登录后发表评论。</p>
+        {% endif %}
+    </section>
+
+    <section>
+        <h4 class="mb-3">评论 ({{ comments|length }})</h4>
+        {% for comment in comments %}
+        <div class="border rounded p-3 mb-3">
+            <div class="d-flex justify-content-between">
+                <strong>{{ comment.author.username }}</strong>
+                <small class="text-muted">{{ comment.created_at|date:"Y-m-d H:i" }}</small>
+            </div>
+            <p class="mb-2">{{ comment.content|linebreaks }}</p>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-outline-primary like-button"
+                        data-comment-id="{{ comment.id }}"
+                        data-like-url="{% url 'Article:comment_like' comment.id %}">
+                    👍 点赞 (<span class="like-count">{{ comment.like_count }}</span>)
+                </button>
+                <button class="btn btn-sm btn-outline-secondary reply-button" data-comment-id="{{ comment.id }}">回复</button>
+            </div>
+
+            {% for reply in comment.replies.all %}
+            <div class="border rounded p-2 mt-3 bg-light">
+                <div class="d-flex justify-content-between">
+                    <strong>{{ reply.author.username }}</strong>
+                    <small class="text-muted">{{ reply.created_at|date:"Y-m-d H:i" }}</small>
+                </div>
+                <p class="mb-1">{{ reply.content|linebreaks }}</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% empty %}
+        <p class="text-muted">暂无评论，快来抢沙发吧！</p>
+        {% endfor %}
+    </section>
 </div>
-<a href="{% url 'Article:article_list' %}">« 返回文章列表</a>
 <script src="{% static 'tokenAdd.js' %}"></script>
 <script>
-    async function logoutUser() {
-    const token = localStorage.getItem('authToken');
+    function getCookie(name) {
+        const cookieValue = document.cookie
+            .split('; ')
+            .find(row => row.startsWith(name + '='));
+        return cookieValue ? decodeURIComponent(cookieValue.split('=')[1]) : null;
+    }
 
-    try {
-        const response = await fetch('/api/auth/logout/', { // 对应你配置的注销URL
-            method: 'POST',
-            headers: {
-                'Authorization': 'Token ' + token,
-                'Content-Type': 'application/json'
+    document.querySelectorAll('.reply-button').forEach(button => {
+        button.addEventListener('click', () => {
+            const parentId = button.dataset.commentId;
+            document.getElementById('parent_id').value = parentId;
+            document.getElementById('cancel-reply').style.display = 'inline-block';
+        });
+    });
+
+    const cancelReply = document.getElementById('cancel-reply');
+    if (cancelReply) {
+        cancelReply.addEventListener('click', () => {
+            document.getElementById('parent_id').value = '';
+            cancelReply.style.display = 'none';
+        });
+    }
+
+    document.querySelectorAll('.like-button').forEach(button => {
+        button.addEventListener('click', async () => {
+            const commentId = button.dataset.commentId;
+            const csrftoken = getCookie('csrftoken');
+            const response = await fetch(button.dataset.likeUrl, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                },
+            });
+            if (response.ok) {
+                const data = await response.json();
+                button.querySelector('.like-count').textContent = data.like_count;
             }
         });
-
-        if (response.ok) {
-            // 1. 清除本地存储的Token
-            localStorage.removeItem('authToken');
-            // 2. (可选) 清除其他用户相关状态
-            // 3. 跳转到登录页或首页
-            window.location.href = '/login/'; // 或首页
-        } else {
-            console.error('注销失败');
-        }
-    } catch (error) {
-        console.error('注销过程中发生错误:', error);
-    }
-}
-
-// 将这个函数绑定到页面上的“退出登录”按钮的点击事件上
-document.getElementById('logout-button').addEventListener('click', logoutUser);
+    });
 </script>
 </body>
 </html>
