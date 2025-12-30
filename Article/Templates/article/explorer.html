@@ -35,7 +35,7 @@
     <div class="container-fluid">
         <!-- 搜索和过滤区 -->
         <div class="search-box">
-            <div class="row">
+            <div class="row g-3">
                 <div class="col-md-6">
                     <input type="text" id="searchInput" class="form-control form-control-lg"
                            placeholder="输入关键词搜索..." value="{{ search_query }}">
@@ -43,10 +43,18 @@
                 <div class="col-md-6">
                     <div class="d-flex flex-wrap gap-2" id="categoryFilters">
                         <span class="badge bg-secondary category-filter {% if not selected_category %}active{% endif %}"
-                              data-category="">全部</span>
+                              data-category="">全部分类</span>
                         {% for category in categories %}
                         <span class="badge bg-light text-dark category-filter {% if selected_category == category.id|stringformat:'i' %}active{% endif %}"
                               data-category="{{ category.id }}">{{ category.name }}</span>
+                        {% endfor %}
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mt-3" id="tagFilters">
+                        <span class="badge bg-secondary tag-filter {% if not selected_tag %}active{% endif %}"
+                              data-tag="">全部标签</span>
+                        {% for tag in tags %}
+                        <span class="badge bg-light text-dark tag-filter {% if selected_tag == tag.name %}active{% endif %}"
+                              data-tag="{{ tag.name }}">{{ tag.name }}</span>
                         {% endfor %}
                     </div>
                 </div>
@@ -58,11 +66,19 @@
             {% for article in articles %}
             <div class="col-lg-4 col-md-6 article-item"
                  data-category="{{ article.category.id }}"
-                 data-title="{{ article.title|lower }}">
+                 data-title="{{ article.title|lower }}"
+                 data-tags="{% for tag in article.tags.all %}{{ tag.name|lower }} {% endfor %}">
                 <div class="card article-card h-100">
                     <div class="card-body">
                         <h5 class="card-title">{{ article.title }}</h5>
                         <span class="badge bg-primary mb-2">{{ article.category.name }}</span>
+                        <div class="mb-2">
+                            {% for tag in article.tags.all %}
+                            <span class="badge bg-light text-dark">#{{ tag.name }}</span>
+                            {% empty %}
+                            <span class="text-muted small">暂无标签</span>
+                            {% endfor %}
+                        </div>
                         <p class="card-text">{{ article.body|truncatewords:20 }}</p>
                     </div>
                     <div class="card-footer">
@@ -93,18 +109,29 @@
             });
         });
 
+        document.querySelectorAll('.tag-filter').forEach(filter => {
+            filter.addEventListener('click', function() {
+                document.querySelectorAll('.tag-filter').forEach(f => f.classList.remove('active'));
+                this.classList.add('active');
+                filterArticles();
+            });
+        });
+
         function filterArticles() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             const selectedCategory = document.querySelector('.category-filter.active').dataset.category;
+            const selectedTag = document.querySelector('.tag-filter.active').dataset.tag;
             const articles = document.querySelectorAll('.article-item');
 
             articles.forEach(article => {
                 const title = article.dataset.title;
                 const category = article.dataset.category;
+                const tags = article.dataset.tags;
                 const matchesSearch = title.includes(searchTerm);
                 const matchesCategory = !selectedCategory || category === selectedCategory;
+                const matchesTag = !selectedTag || tags.includes(selectedTag);
 
-                article.style.display = (matchesSearch && matchesCategory) ? 'block' : 'none';
+                article.style.display = (matchesSearch && matchesCategory && matchesTag) ? 'block' : 'none';
             });
         }
     </script>

@@ -1,5 +1,6 @@
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.core.paginator import Paginator
+from django.db.models import Q, Prefetch
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.template.context_processors import csrf
@@ -10,7 +11,7 @@ from django.db.models import Count
 from django.utils import timezone
 from datetime import timedelta
 
-from .models import Article, Category
+from .models import Article, Category, Tag, Comment
 from rest_framework import viewsets
 from .serializers import ArticleSerializer
 from rest_framework import status
@@ -151,13 +152,109 @@ class ArticleViewSet(viewsets.ModelViewSet):
 
 
 def article_list(request):
-    articles = Article.objects.all().order_by('-created')
-    return render(request, 'article/list.html', {'articles': articles})
+    search_query = request.GET.get('q', '').strip()
+    tag_filter = request.GET.get('tag', '').strip()
+    category_filter = request.GET.get('category', '').strip()
+    order = request.GET.get('order', '-created')
+
+    allowed_orders = {'created', '-created', 'title', '-title'}
+    if order not in allowed_orders:
+        order = '-created'
+
+    articles = (
+        Article.objects.select_related('category', 'author')
+        .prefetch_related('tags')
+        .filter(status=Article.STATUS_PUBLISHED)
+    )
+
+    if search_query:
+        articles = articles.filter(
+            Q(title__icontains=search_query)
+            | Q(body__icontains=search_query)
+            | Q(tags__name__icontains=search_query)
+        )
+
+    if tag_filter:
+        articles = articles.filter(tags__name=tag_filter)
+
+    if category_filter:
+        articles = articles.filter(category_id=category_filter)
+
+    articles = articles.order_by(order).distinct()
+    paginator = Paginator(articles, 6)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'articles': page_obj,
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'tag_filter': tag_filter,
+        'category_filter': category_filter,
+        'order': order,
+        'categories': Category.objects.all(),
+        'tags': Tag.objects.all(),
+    }
+    return render(request, 'article/list.html', context)
 
 
 def article_detail(request, id):
-    article = get_object_or_404(Article, id=id)
-    return render(request, 'article/details.html', {'article': article})
+    article = get_object_or_404(Article.objects.select_related('author', 'category'), id=id)
+    replies = Comment.objects.filter(is_approved=True).select_related('author')
+    comments = (
+        Comment.objects.filter(article=article, is_approved=True, parent__isnull=True)
+        .select_related('author')
+        .prefetch_related(Prefetch('replies', queryset=replies), 'likes')
+    )
+    return render(
+        request,
+        'article/details.html',
+        {
+            'article': article,
+            'comments': comments,
+        },
+    )
+
+
+@login_required
+def comment_create(request, article_id):
+    if request.method != 'POST':
+        return JsonResponse({'error': '只接受POST请求'}, status=405)
+
+    article = get_object_or_404(Article, id=article_id)
+    content = request.POST.get('content', '').strip()
+    parent_id = request.POST.get('parent_id')
+
+    if not content:
+        return JsonResponse({'error': '评论内容不能为空'}, status=400)
+
+    parent = None
+    if parent_id:
+        parent = get_object_or_404(Comment, id=parent_id, article=article)
+
+    Comment.objects.create(
+        article=article,
+        author=request.user,
+        content=content,
+        parent=parent,
+    )
+    return JsonResponse({'message': '评论已提交，等待审核或展示。'})
+
+
+@login_required
+def comment_like(request, comment_id):
+    if request.method != 'POST':
+        return JsonResponse({'error': '只接受POST请求'}, status=405)
+
+    comment = get_object_or_404(Comment, id=comment_id)
+    if request.user in comment.likes.all():
+        comment.likes.remove(request.user)
+        liked = False
+    else:
+        comment.likes.add(request.user)
+        liked = True
+
+    return JsonResponse({'liked': liked, 'like_count': comment.like_count})
 
 
 def get_csrf(request):
@@ -228,12 +325,14 @@ def article_explorer(request):
     """交互式文章探索页面"""
     # 获取所有分类用于过滤器
     categories = Category.objects.all()
+    tags = Tag.objects.all()
 
     # 获取搜索参数
     search_query = request.GET.get('q', '')
     category_filter = request.GET.get('category', '')
+    tag_filter = request.GET.get('tag', '')
 
-    articles = Article.objects.select_related('category')
+    articles = Article.objects.select_related('category').prefetch_related('tags')
 
     if search_query:
         articles = articles.filter(
@@ -244,10 +343,15 @@ def article_explorer(request):
     if category_filter:
         articles = articles.filter(category_id=category_filter)
 
+    if tag_filter:
+        articles = articles.filter(tags__name=tag_filter)
+
     context = {
         'articles': articles,
         'categories': categories,
         'search_query': search_query,
-        'selected_category': category_filter
+        'selected_category': category_filter,
+        'tags': tags,
+        'selected_tag': tag_filter,
     }
     return render(request, 'article/explorer.html', context)

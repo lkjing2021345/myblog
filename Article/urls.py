@@ -15,6 +15,8 @@ urlpatterns = [
     path('', views.article_list, name='article_list'),
     # 文章详情页：URL模式中包含文章ID，如 'article/1/'
     path('<int:id>/', views.article_detail, name='article_detail'),
+    path('comments/<int:article_id>/create/', views.comment_create, name='comment_create'),
+    path('comments/<int:comment_id>/like/', views.comment_like, name='comment_like'),
     path('api/', views.articles_api, name='articles_api'),
     path('api/register/', views.register_user, name='register'),
     path('api/logout/', views.user_logout, name='logout'),

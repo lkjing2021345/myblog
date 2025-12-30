@@ -1,34 +1,6 @@
+from django.conf import settings
 from django.db import models
 
-
-# class Category(models.Model):
-#     name = models.CharField('分类名称', max_length=100, unique=True)
-#     created_time = models.DateTimeField('创建时间', auto_now_add=True)
-#
-#     class Meta:
-#         verbose_name = '文章分类'
-#         verbose_name_plural = verbose_name  # 避免Admin后台显示英文复数
-#
-#     # def __init__(self, *args: any, **kwargs: any):
-#     #     super().__init__(*args, **kwargs)
-#     #     self.article_count = None
-#     #
-#     # def __init__(self, *args: Any, **kwargs: Any):
-#     #     super().__init__(args, kwargs)
-#     #     self.article_set = None
-#
-#     @property
-#     def article_count(self):
-#         """作为属性而不是在__init__中设置"""
-#         if hasattr(self, '_article_count'):
-#             return self._article_count
-#         self._article_count = self.article_set.count()
-#         return self._article_count
-#
-#     def __str__(self):
-#         def __str__(self):
-#             # 🔥 修复：简化返回逻辑
-#             return str(self.name)  # 用于在Admin后台或Shell中直观显示
 
 class Category(models.Model):
     name = models.CharField('分类名称', max_length=100, unique=True)
@@ -39,24 +11,48 @@ class Category(models.Model):
         verbose_name_plural = verbose_name
 
     def __str__(self):
-        # 绝对确保返回字符串
-        try:
-            return f"{self.name}"
-        except:
-            return "Category Object"
+        return str(self.name)
+
+
+class Tag(models.Model):
+    name = models.CharField('标签名称', max_length=50, unique=True)
+    created_time = models.DateTimeField('创建时间', auto_now_add=True)
+
+    class Meta:
+        verbose_name = '文章标签'
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return str(self.name)
 
 
 class Article(models.Model):
     """
     文章模型
     """
+    STATUS_DRAFT = 'draft'
+    STATUS_PUBLISHED = 'published'
+
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, '草稿'),
+        (STATUS_PUBLISHED, '已发布'),
+    ]
+
     title = models.CharField('文章标题', max_length=70)
-    # 关键：使用外键关联分类。on_delete=models.CASCADE表示分类删除时，该分类下所有文章也被删除。
     category = models.ForeignKey(Category, on_delete=models.CASCADE, verbose_name='所属分类')
-    author = models.CharField('作者', max_length=100)
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='articles',
+        verbose_name='作者',
+    )
     body = models.TextField('文章正文')
-    created = models.DateTimeField('创建时间', auto_now_add=True)  # 自动设置为文章创建的时间
-    updated = models.DateTimeField('更新时间', auto_now=True)  # 每次保存对象时自动更新为当前时间
+    tags = models.ManyToManyField(Tag, blank=True, related_name='articles', verbose_name='标签')
+    status = models.CharField('文章状态', max_length=20, choices=STATUS_CHOICES, default=STATUS_PUBLISHED)
+    created = models.DateTimeField('创建时间', auto_now_add=True)
+    updated = models.DateTimeField('更新时间', auto_now=True)
 
     class Meta:
         verbose_name = '文章'
@@ -64,3 +60,42 @@ class Article(models.Model):
 
     def __str__(self):
         return str(self.title)
+
+
+class Comment(models.Model):
+    article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name='comments', verbose_name='文章')
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='comments',
+        verbose_name='评论作者',
+    )
+    content = models.TextField('评论内容')
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='replies',
+        verbose_name='父评论',
+    )
+    likes = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='liked_comments',
+        blank=True,
+        verbose_name='点赞用户',
+    )
+    is_approved = models.BooleanField('是否审核通过', default=True)
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+
+    class Meta:
+        verbose_name = '评论'
+        verbose_name_plural = verbose_name
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.author} - {self.content[:20]}"
+
+    @property
+    def like_count(self):
+        return self.likes.count()
