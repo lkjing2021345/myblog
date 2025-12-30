@@ -1,18 +1,98 @@
 {% load static %}
-<link rel="stylesheet" href="{% static 'css/style.css' %}">
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>用户登录</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shimmer的博客 | 用户登录</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-<form id="loginForm">
-    <input type="text" id="username" placeholder="用户名" required>
-    <input type="password" id="password" placeholder="密码" required>
-    <button type="submit">登录</button>
-</form>
-<div id="message"></div>
+<div class="login-background">
+    <!-- 背景装饰元素 -->
+    <div class="bg-decor decor-1"></div>
+    <div class="bg-decor decor-2"></div>
+    <div class="bg-decor decor-3"></div>
+    <div class="bg-decor decor-4"></div>
+
+    <!-- 主要内容区域 -->
+    <div class="main-content">
+        <!-- 主登录容器 -->
+        <div class="login-container">
+            <div class="login-card">
+                <!-- 左侧图片区域 -->
+                <div class="login-image"></div>
+
+                <!-- 右侧表单区域 -->
+                <div class="login-form">
+                    <!-- 网站标题和标语 -->
+                    <div class="site-header">
+                        <h1 class="site-title">
+                            <i class="fas fa-sparkles"></i>
+                            Shimmer的博客网站
+                        </h1>
+                        <p class="site-subtitle">记录思考 · 分享知识 · 探索可能</p>
+                        <div class="divider"></div>
+                    </div>
+
+                    <!-- 登录表单 -->
+                    <h2 class="login-title">用户登录</h2>
+                    <form id="loginForm" class="login-form-container">
+                        <div class="form-group">
+                            <label for="username" class="form-label">
+                                <i class="fas fa-user"></i> 用户名
+                            </label>
+                            <input type="text"
+                                   id="username"
+                                   class="form-input"
+                                   placeholder="请输入用户名"
+                                   value="pjh"
+                                   required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password" class="form-label">
+                                <i class="fas fa-lock"></i> 密码
+                            </label>
+                            <input type="password"
+                                   id="password"
+                                   class="form-input"
+                                   placeholder="请输入密码"
+                                   required>
+                        </div>
+
+                        <div class="form-options">
+                            <label class="remember-me">
+                                <input type="checkbox" id="remember">
+                                <span>记住登录状态</span>
+                            </label>
+                            <a href="#" class="forgot-password">忘记密码?</a>
+                        </div>
+
+                        <button type="submit" class="login-button">
+                            <i class="fas fa-sign-in-alt"></i> 登录
+                        </button>
+
+                        <div class="signup-link">
+                            还没有账号? <a href="#">立即注册</a>
+                        </div>
+                    </form>
+
+                    <!-- 消息提示区域 -->
+                    <div id="message" class="message"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 - 移动到页面底部 -->
+    <div class="login-footer">
+        <p>
+            © 2024 Shimmer的博客网站 | 记录每一刻的思考与灵感
+            <span class="footer-avatar">S</span>
+        </p>
+    </div>
+</div>
 
 <script src="{% static 'login.js' %}"></script>
 </body>
